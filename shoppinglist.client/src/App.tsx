@@ -523,7 +523,7 @@ export default function App() {
             }));
 
             const list: List = { id: data.id, title: data.title, listedItems: [...mappedItems, emptyRow] };
-
+            setItems(list.listedItems);
             return list;
         }
         catch (error) {
