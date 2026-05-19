@@ -131,58 +131,7 @@ export default function App() {
 
 
 
-    //LIST LOADING
-    const loadAllLists = async (): Promise<List[]> => {
-        try {
-            const resp = await fetch(`${BACKEND_URL}/api/shoplist`, {
-                method: "GET",
-                credentials: "include"
-            })
-            const data = await resp.json();
-            if (data[0] != null) {
-                setListId(listId ? listId : data[0].id);
-            } else {
-                CreateList();
-                return;
-            }
-            return data;
-        }
-        catch (error) {
-            console.log(error);
-        }
-    }
-
-
-    const loadList = async (id): Promise<List> => {
-        try {
-            const resp = await fetch(`${BACKEND_URL}/api/shoplist/${id}`, {
-                method: "GET",
-                credentials: "include"
-            })
-
-            const data = await resp.json();
-            
-            setListId(data.id);
-            setListTitle(data.title);
-
-            const safeData = Array.isArray(data.listedItems) ? data.listedItems : [];
-            const mappedItems = safeData.map((itemDB: any, index: number) => ({
-                id: itemDB.id === 0 ? `temp-${index}-${Date.now()}` : itemDB.id,  //temp for unique ID
-                name: itemDB.name || '',
-                quantity: itemDB.quantity || '',
-                price: itemDB.price || '',
-                isChecked: itemDB.isChecked || false,
-                position: itemDB.position
-            }));
-
-            const list: List = { id: data.id, title: data.title, listedItems: [...mappedItems, emptyRow] };
-
-            return list;
-        }
-        catch (error) {
-            console.log(error);
-        }
-    }
+    
 
 
 
@@ -311,9 +260,24 @@ export default function App() {
                 isChecked: itemDB.isChecked || false,
                 position: itemDB.position
             }));
-            const list: List = { id: returnedList.id, title: returnedList.title, listedItems: [...mappedItems, emptyRow] };
-            queryClient.setQueryData(['list', listId], list)
-            setItems([...mappedItems, emptyRow]);
+            setItems((prevItems) => {
+                const mergedItems = prevItems.map((localItem, index) => {
+                    const serverItem = mappedItems.find(dbItem => dbItem.position === localItem.position) || mappedItems[index];
+                    if (serverItem && (String(localItem.id).startsWith('temp'))) {
+                        return {
+                            ...localItem,
+                            id: serverItem.id
+                        };
+                    }
+                    return localItem;
+                });
+                const list: List = { id: returnedList.id, title: returnedList.title, listedItems: [...mergedItems, emptyRow] };
+                queryClient.setQueryData(['list', listId], list)
+
+                return mergedItems;
+            })
+            
+            //setItems([...mappedItems, emptyRow]);
         }
     })
 
@@ -514,6 +478,59 @@ export default function App() {
 
 
 
+    //LIST LOADING
+    const loadAllLists = async (): Promise<List[]> => {
+        try {
+            const resp = await fetch(`${BACKEND_URL}/api/shoplist`, {
+                method: "GET",
+                credentials: "include"
+            })
+            const data = await resp.json();
+            if (data[0] != null) {
+                setListId(listId ? listId : data[0].id);
+            } else {
+                CreateList();
+                return;
+            }
+            return data;
+        }
+        catch (error) {
+            console.log(error);
+        }
+    }
+
+
+    const loadList = async (id): Promise<List> => {
+        try {
+            const resp = await fetch(`${BACKEND_URL}/api/shoplist/${id}`, {
+                method: "GET",
+                credentials: "include"
+            })
+
+            const data = await resp.json();
+            
+            //setListId(data.id);
+            setListTitle(data.title);
+
+            const safeData = Array.isArray(data.listedItems) ? data.listedItems : [];
+            const mappedItems = safeData.map((itemDB: any, index: number) => ({
+                id: itemDB.id === 0 ? `temp-${index}-${Date.now()}` : itemDB.id,  //temp for unique ID
+                name: itemDB.name || '',
+                quantity: itemDB.quantity || '',
+                price: itemDB.price || '',
+                isChecked: itemDB.isChecked || false,
+                position: itemDB.position
+            }));
+
+            const list: List = { id: data.id, title: data.title, listedItems: [...mappedItems, emptyRow] };
+
+            return list;
+        }
+        catch (error) {
+            console.log(error);
+        }
+    }
+
     // CREATE AND DELETE LIST
     const CreateList = async () => {
         try {
@@ -684,7 +701,6 @@ export default function App() {
         }
     }, [userData])
 
-    console.log("User Data:", userData)
     if (items) {
         return (
             <div className="fixed inset-0 flex flex-col overflow-hidden">
@@ -800,7 +816,7 @@ export default function App() {
                                 {userLists?.map((list) => (
                                     <li key={list.id}>
                                         <div className="flex flex-row md:flex-row">
-                                            <CustomTrigger children={list.title} onClick={() => { setListId(list.id); loadListRefetch(); }}></CustomTrigger>
+                                            <CustomTrigger children={list.title} onClick={() => { setListId(list.id); /*loadListRefetch();*/ }}></CustomTrigger>
                                             <Button onClick={() => {setListIdToDelete(list.id); setIsConfirmOpen(true); }}>X</Button>
                                         </div>
                                     </li>
