@@ -788,12 +788,14 @@ export default function App() {
 
 
                         
-
-                        <div className="flex-none flex flex-row items-center justify-between gap-4 bottom-0 left-0 z-50 w-full p-5 border-1 border-taupe-300 shadow-sm">
+                        <div className="flex-none flex flex-row items-center justify-center gap-4 bottom-0 left-0 z-50 w-full py-2 px-2 border-1 border-taupe-300">
+                            <input disabled value="- Ενημέρωση: Πάτησε ENTER για να καταχωρηθεί η γραμμή." className="w-full md:w-2/3 lg:w-1/2 border-1 border-taupe-300 rounded py-1 px-1" />
+                        </div>
+                        <div className="flex-none flex flex-row items-center justify-between gap-4 bottom-0 left-0 z-50 w-full py-5 px-2 border-1 border-taupe-300 shadow-sm">
                             <div className="flex flex-row items-center gap-2">
 
-                                {userData?.pictureUrl ? <img src={userData.pictureUrl} referrerPolicy="no-referrer" className="w-6 h-6 rounded-full" /> : <h3></h3>}
-                                {userData ? <h2>{userData?.name}, {userData?.email}</h2> : <h2></h2>}
+                                {userData?.pictureUrl ? <img src={userData.pictureUrl} referrerPolicy="no-referrer" className="w-10 h-10 rounded-full" /> : <h3></h3>}
+                                {userData ? <h2 className="text-sm">{userData?.name}, {userData?.email}</h2> : <h2 className="text-sm"></h2>}
 
                                 {!userData ?
                                     <Button onClick={() => Login()}>Σύνδεση με Google</Button>
@@ -801,7 +803,7 @@ export default function App() {
 
                                 
                             </div>
-                            <input disabled value="- Ενημέρωση: Πάτησε ENTER για να καταχωρηθεί η γραμμή." className="w-full md:w-2/3 lg:w-1/2 border-1 border-taupe-300 rounded py-2 px-1"/>
+                            
                             <div className="flex items-center gap-2 w-auto">
                                 
                                 <Button className="m-2">Btn2</Button>
