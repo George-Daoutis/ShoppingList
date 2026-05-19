@@ -2,7 +2,8 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { Button } from '@/components/ui/button.js';
-import { Sidebar, SidebarTrigger, SidebarProvider, useSidebar, SidebarInset } from '@/components/ui/sidebar.js';
+import { Sidebar, SidebarTrigger, SidebarProvider, useSidebar, SidebarInset } from '@/components/ui/sidebar.tsx';
+import { RenameIcon, ShareIcon, LogoutIcon } from '@/components/icons.tsx';
 import { useDebounce } from './debounce.tsx';
 import { NameModal, ShareModal } from './Modals.js';
 import { ConfirmModal } from './ConfirmModal.js';
@@ -714,14 +715,14 @@ export default function App() {
                         <div className="flex p-4 items-center justify-between">
                             <SidebarTrigger />
                             <div className="flex flex-row gap-5 px-5">
-                                <Button disabled={isGuest ? true : false} onClick={() => setIsRenameOpen(true)}>Rename</Button>
-                                <Button disabled={isGuest ? true : false} onClick={() => setIsShareOpen(true)}>Share</Button>
+                                <Button disabled={isGuest ? true : false} onClick={() => setIsRenameOpen(true)}>{<RenameIcon/>}</Button>
+                                <Button disabled={isGuest ? true : false} onClick={() => setIsShareOpen(true)}>{<ShareIcon/>}</Button>
                             </div>
                         </div>
                         
                         <div className="flex flex-col h-full overflow-hidden w-full max-w-4xl mx-auto px-3">
                             <div className="flex-none flex flex-row items-center justify-between gap-4 p-1">
-                                <h2 className="whitespace-nowrap">{listId ? listTitle : "New List"}</h2>
+                                <h2 className="whitespace-nowrap">{listId ? listTitle : "Νέα Λίστα"}</h2>
                                 
                             </div>
 
@@ -743,7 +744,7 @@ export default function App() {
                                                 ref={el => { if (el) { inputRefs.current[index] = el; } else { delete inputRefs.current[index] } }}
                                                 type="text"
                                                 value={item.name}
-                                                placeholder="Item name..."
+                                                placeholder="Νέα Γραμμή..."
                                                 spellCheck="false"
                                                 onChange={(e) => { updateItem(item.id, 'name', e.target.value, index); handleChange(e, index); }}
                                                 onKeyDown={(e) => handleKeyDown(e, index)}
@@ -788,18 +789,21 @@ export default function App() {
 
                         
 
-                        <div className="flex-none flex flex-row items-center justify-between gap-4 bottom-0 left-0 z-50 w-full p-5 border shadow-sm">
-                            <div>
-                                <br />
-                                {userData ?
-                                    <Button onClick={() => Logout()}>Log out</Button>
-                                    : <Button onClick={() => Login()}>Log in with Google</Button>}
+                        <div className="flex-none flex flex-row items-center justify-between gap-4 bottom-0 left-0 z-50 w-full p-5 border-1 border-taupe-300 shadow-sm">
+                            <div className="flex flex-row items-center gap-2">
 
-                                <h2>{userData?.name}, {userData?.email}</h2>
-                                {userData?.pictureUrl ? <img src={userData.pictureUrl} referrerPolicy="no-referrer" className="w-6 h-6 rounded-full" /> : <h3>pic:{userData?.pictureUrl}</h3>}
+                                {userData?.pictureUrl ? <img src={userData.pictureUrl} referrerPolicy="no-referrer" className="w-6 h-6 rounded-full" /> : <h3></h3>}
+                                {userData ? <h2>{userData?.name}, {userData?.email}</h2> : <h2></h2>}
+
+                                {!userData ?
+                                    <Button onClick={() => Login()}>Σύνδεση με Google</Button>
+                                    : <h2/>}
+
+                                
                             </div>
+                            <input disabled value="- Ενημέρωση: Πάτησε ENTER για να καταχωρηθεί η γραμμή." className="w-full md:w-2/3 lg:w-1/2 border-1 border-taupe-300 rounded py-2 px-1"/>
                             <div className="flex items-center gap-2 w-auto">
-                                <input placeholder="a" className="border"/>
+                                
                                 <Button className="m-2">Btn2</Button>
                             </div>
                         </div>
@@ -808,10 +812,10 @@ export default function App() {
 
                         </SidebarInset>
                     <Sidebar>
-                        <main>
-                            <div className="flex flex-row md:flex-row">
-                                <SidebarTrigger className="flex items-end" />
-                                <Button disabled={isGuest ? true : false} onClick={() => CreateList() }>Create List</Button>
+                        <main className="flex flex-col h-screen">
+                            <div className="flex flex-row items-center justify-between p-3">
+                                <SidebarTrigger/>
+                                <Button disabled={isGuest ? true : false} onClick={() => CreateList() }>+ Νέα Λίστα</Button>
                             </div>
                             <ul className="list-disc pl-5 space-y-2">
                                 {userLists?.map((list) => (
@@ -821,8 +825,12 @@ export default function App() {
                                             <Button onClick={() => {setListIdToDelete(list.id); setIsConfirmOpen(true); }}>X</Button>
                                         </div>
                                     </li>
+
                                 )) }
                             </ul>
+                            <div className="mt-auto p-4">
+                                {userData ? <Button onClick={() => Logout()}>{<LogoutIcon />}Αποσύνδεση</Button> : <h2 />}
+                            </div>
                             </main>
                         </Sidebar>
                     </SidebarProvider>
