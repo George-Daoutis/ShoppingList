@@ -748,7 +748,8 @@ export default function App() {
                                                 onChange={(e) => { updateItem(item.id, 'name', e.target.value, index); handleChange(e, index); }}
                                                 onKeyDown={(e) => handleKeyDown(e, index)}
                                                 enterKeyHint="enter"
-                                                className="flex-1 min-w-0 px-2 py-1 border-b-2 border-gray-400 focus:outline-none"
+                                                className={`flex-1 min-w-0 px-2 py-1 border-b-2 ${String(item.id).startsWith("temp") ? `border-rose-300` : `border-emerald-500`} focus:outline-none`}
+                                                //className="flex-1 min-w-0 px-2 py-1 border-b-2 border-gray-400 focus:outline-none"
                                             />
                                             {hasQty ? <input
                                                 type="text"
