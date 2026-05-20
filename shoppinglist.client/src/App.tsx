@@ -804,7 +804,7 @@ export default function App() {
                                 
                             </div>
                             
-                            <div className="flex items-center gap-2 w-auto">
+                            <div className="flex items-center gap-2  w-auto">
                                 
                                 <Button className="m-2">Btn2</Button>
                             </div>
