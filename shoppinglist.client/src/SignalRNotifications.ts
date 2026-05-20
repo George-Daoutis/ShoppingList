@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from "react";
 const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL;
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-export const useNotificationSocket = (listId: number | null, debounce) => {
+export const useNotificationSocket = (listId: number | null, debounce, onNotification: (message: string) => void) => {
     const connectionRef = useRef<signalR.HubConnection | null>(null);
     const [isReady, setIsReady] = useState(false);
 
@@ -46,6 +46,7 @@ export const useNotificationSocket = (listId: number | null, debounce) => {
         if (isReady && conn?.state === signalR.HubConnectionState.Connected && listId) {
             const handleNotification = (userName: string, id: number) => {
                 console.log(`Notification received for list ${id}`);
+                onNotification(`${userName} άλλαξε μια κοινή λίστα.`)
             }
             conn.on("NewNotification", handleNotification);
 
@@ -53,5 +54,5 @@ export const useNotificationSocket = (listId: number | null, debounce) => {
                 conn.off("NewNotification", handleNotification);
                 };
             }
-    }, [debounce])
+    }, [debounce, onNotification])
 };
