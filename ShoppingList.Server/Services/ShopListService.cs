@@ -87,9 +87,9 @@ namespace ShoppingList.Server.Services
 
                 if (user != null)
                 {
-                    var value = await _dbContext.ShopLists
-                    .Where(s => s.Users.Contains(user))
+                    var allListToReturn = await _dbContext.ShopLists
                     .Include(s => s.Users)
+                    .Where(s => s.Users.Contains(user))
                     .Select(s => new ShopListGetDTO
                     {
                         Id = s.Id,
@@ -106,7 +106,7 @@ namespace ShoppingList.Server.Services
                     })
                     .ToListAsync();
 
-                    return value;
+                    return allListToReturn;
                 }
                 else
                 {

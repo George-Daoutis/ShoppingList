@@ -493,6 +493,7 @@ export default function App() {
                 CreateList();
                 return;
             }
+            setUserLists(data);
             return data;
         }
         catch (error) {
@@ -822,7 +823,8 @@ export default function App() {
                                 <SidebarTrigger/>
                                 <Button disabled={isGuest ? true : false} onClick={() => CreateList() }>+ Νέα Λίστα</Button>
                             </div>
-                            <ul className="list-disc pl-5 space-y-2">
+                            {/*<ul className="list-disc pl-5 space-y-2">*/}
+                            <ul className="list-disc pl-5 space-y-2 flex-1 overflow-y-auto pr-2">
                                 {userLists?.map((list) => (
                                     <li key={list.id}>
                                         <div className="flex flex-row md:flex-row">
