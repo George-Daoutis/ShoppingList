@@ -56,10 +56,10 @@ th, td {
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
     @keyframes marquee {
-        0% { transform: translateX(100%);}
+        0% { transform: translateX(0%);}
         100% { transform: translateX(-100%);}
     }
-    --animate-marquee: marquee 15s linear infinite;
+    --animate-marquee: marquee 12s linear infinite;
 }
 
 :root {

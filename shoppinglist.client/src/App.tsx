@@ -787,9 +787,9 @@ export default function App() {
 
 
 
-                        <div className="flex-none flex flex-row items-center justify-center gap-4 bottom-0 left-0 z-50 w-full py-2 px-2 border-1 border-taupe-300">
-                            <div className="w-full md:w-2/3 lg:w-1/2 border-1 border-taupe-300 rounded py-1 px-1 overflow-hidden whitespace-nowrap">
-                                <div className="w-100 animate-marquee inline-block">
+                        <div className="flex-none flex flex-row items-center justify-center gap-4 bottom-0 left-0 z-50 w-full py-2 px-2">
+                            <div className="w-full md:w-2/3 lg:w-1/2 border-r-4 border-l-4 border-taupe-300 rounded py-1 px-1 overflow-hidden whitespace-nowrap">
+                                <div className="w-full animate-marquee inline-block w-max pl-[100%]" aria-hidden="true">
                                     <span className="">Πάτησε ENTER για να καταχωρηθεί η γραμμή.</span>
                                 </div>
                             </div>
