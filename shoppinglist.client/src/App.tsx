@@ -799,7 +799,7 @@ export default function App() {
                                 </div>
                             </div>
                         </div>
-                        <div className="flex-none flex flex-row items-center justify-between gap-4 bottom-0 left-0 z-50 w-full py-5 px-2 border-1 border-taupe-300 shadow-sm">
+                        <div className="flex-none flex flex-row items-center justify-between  gap-4 bottom-0 left-0 z-50 w-full py-5 px-2 border-1 border-taupe-300 shadow-sm">
                             <div className="flex flex-row items-center gap-2">
 
                                 {userData?.pictureUrl ? <img src={userData.pictureUrl} referrerPolicy="no-referrer" className="w-10 h-10 rounded-full" /> : <h3></h3>}
