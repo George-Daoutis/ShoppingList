@@ -135,7 +135,7 @@ namespace ShoppingList.Server.Services
                         .Where(s => s.Users.Contains(user))
                         .ToListAsync();
 
-                    if (userLists.Count < 20) //Add UI indication for this
+                    if (userLists.Count < 30) //Add UI indication for this
                     {
                         var newList = new ShopList { Title = shopListCreateDTO.Title };
                         newList.Users.Add(user);
