@@ -54,13 +54,14 @@ builder.Services.AddAuthentication(opt =>
     .AddCookie(opt =>
     {
         opt.Cookie.Name = "__Host-ShoppingList_Auth";
+        opt.Cookie.Path = "/";
         opt.ExpireTimeSpan = TimeSpan.FromDays(30);
         opt.SlidingExpiration = true;
         opt.Cookie.HttpOnly = true;
         opt.Cookie.SameSite = SameSiteMode.None;
         opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 
-        opt.Cookie.Path = "/; SameSite=None; Partitioned";
+        //.Cookie.Path = "/; SameSite=None; Partitioned";
 
         opt.Events.OnRedirectToLogin = context =>
         {
@@ -119,6 +120,17 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 
 builder.Services.AddSignalR();
 
+builder.Services.Configure<CookiePolicyOptions>(opt =>
+{
+    opt.OnAppendCookie = context =>
+    {
+        if (context.CookieName.StartsWith("__Host-ShoppingList_Auth"))
+        {
+            context.CookieOptions.Extensions.Add("Partitioned");
+        }
+    };
+});
+
 var app = builder.Build();
 
 app.UseForwardedHeaders();
@@ -152,6 +164,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors("MyCorsPolicy");
+app.UseCookiePolicy();
 
 app.UseAuthentication();
 app.UseAuthorization();
