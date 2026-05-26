@@ -4,7 +4,7 @@ namespace ShoppingList.Server.Hubs
 {
     public interface INotificationHubService
     {
-        Task NewNotification(string userName, int listId);
+        Task NewNotification(string name, string userMail, int listId);
     }
     public class NotificationHubService: Hub<INotificationHubService>
     {
@@ -18,7 +18,7 @@ namespace ShoppingList.Server.Hubs
             await Groups.RemoveFromGroupAsync(Context.ConnectionId, $"list_{listId}");
         }
 
-        public async Task NewNotification(string userName, int listId)
+        public async Task NewNotification(string name, string userMail, int listId)
         {
             
         }

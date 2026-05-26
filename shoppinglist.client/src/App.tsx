@@ -86,10 +86,7 @@ export default function App() {
     const [needSave, setNeedSave] = useState(false);
 
     const [notifMessage, setNotifMessage] = useState("Πάτησε ENTER για να καταχωρηθεί η γραμμή.");
-    useNotificationSocket(listId, debouncedSave, (msg) => {
-        setNotifMessage(msg);
-        setTimeout(() => setNotifMessage("Πάτησε ENTER για να καταχωρηθεί η γραμμή."), 30000)
-    });
+    
     const queryClient = useQueryClient();
 
     //MODALS
@@ -419,15 +416,6 @@ export default function App() {
                 newItems.splice(index + 1, 0, newItem);
                 setItems(newItems);
 
-                
-                // Focus the new input on the next render
-                //setTimeout(() => {
-                    //if (inputRefs.current[index + 1]) {
-                        //setFocusIndex(index + 1);
-                        //console.log(index + 1);
-                        //inputRefs.current[index + 1].focus();
-                    //}
-                //}, 10);
             }
         }
 
@@ -441,14 +429,10 @@ export default function App() {
             }
             const newItems = items.filter((_, i) => i !== index);
             setItems(newItems);
-            //if (inputRefs.current[index - 1]) {
-            //    inputRefs.current[index - 1].focus();
-            //}
         }
     };
 
     const handleChange = (e, index) => {
-        //console.log(items[index].name.length)
         if (items[index].name.length === 1 && items.length <= 1) {
             items[index].quantity = '';
             items[index].price = '';
@@ -457,11 +441,11 @@ export default function App() {
 
 
 
-
-
+    
+    /* REMOVED CAUSE OF FIREFOX CORS ISSUE!
     const Login = async () => {
         window.location.href = `${BACKEND_URL}/api/auth/login`;
-    }
+    }*/
 
     const Logout = async () => {
         try {
@@ -520,7 +504,7 @@ export default function App() {
 
             const safeData = Array.isArray(data.listedItems) ? data.listedItems : [];
             const mappedItems = safeData.map((itemDB: any, index: number) => ({
-                id: itemDB.id === 0 ? `temp-${index}-${Date.now()}` : itemDB.id,  //temp for unique ID
+                id: itemDB.id === 0 ? `temp-${index}-${Date.now()}` : itemDB.id,
                 name: itemDB.name || '',
                 quantity: itemDB.quantity || '',
                 price: itemDB.price || '',
@@ -662,7 +646,7 @@ export default function App() {
         }
     };*/
 
-    const { data: userData } = useQuery({
+    const { data: userData, isLoading: mainLoading } = useQuery({
         queryKey: ['user'],
         queryFn: firstLoad,
         enabled: !!isGuest
@@ -707,6 +691,11 @@ export default function App() {
         }
     }, [userData])
 
+    useNotificationSocket(listId, userData?.email, debouncedSave, (msg) => {
+        setNotifMessage(msg);
+        setTimeout(() => setNotifMessage("Πάτησε ENTER για να καταχωρηθεί η γραμμή."), 30000)
+    });
+
     if (items) {
         return (
             <div className="fixed inset-0 flex flex-col overflow-hidden">
@@ -720,6 +709,8 @@ export default function App() {
                         <div className="flex p-4 items-center justify-between">
                             <SidebarTrigger />
                             <div className="flex flex-row gap-5 px-5">
+                                <Button onClick={() => console.log("clicked")}>Refresh</Button>
+                                <Button onClick={() => console.log("clicked")}>Remove Done</Button>
                                 <Button disabled={isGuest ? true : false} onClick={() => setIsRenameOpen(true)}>{<RenameIcon/>}</Button>
                                 <Button disabled={isGuest ? true : false} onClick={() => setIsShareOpen(true)}>{<ShareIcon/>}</Button>
                             </div>
@@ -727,7 +718,8 @@ export default function App() {
                         
                         <div className="flex flex-col h-full overflow-hidden w-full max-w-4xl mx-auto px-3">
                             <div className="flex-none flex flex-row items-center justify-between gap-4 p-1">
-                                <h2 className="whitespace-nowrap">{listId ? listTitle : "Νέα Λίστα"}</h2>
+                                {mainLoading ? <h2 className="spinner whitespace-nowrap text-lg font-semibold">Loading...</h2> :
+                                    <h2 className="whitespace-nowrap text-lg font-semibold">{listId ? listTitle : "Νέα Λίστα"}</h2>}
                                 
                             </div>
 
@@ -755,7 +747,6 @@ export default function App() {
                                                 onKeyDown={(e) => handleKeyDown(e, index)}
                                                 enterKeyHint="enter"
                                                 className={`flex-1 min-w-0 px-2 py-1 border-b-2 ${String(item.id).startsWith("temp") ? `border-rose-300` : `border-emerald-500`} focus:outline-none`}
-                                                //className="flex-1 min-w-0 px-2 py-1 border-b-2 border-gray-400 focus:outline-none"
                                             />
                                             {hasQty ? <input
                                                 type="text"
@@ -766,7 +757,6 @@ export default function App() {
                                                 onChange={(e) => updateItem(item.id, 'quantity', e.target.value, index)}
                                                 onKeyDown={(e) => {
                                                     if (!/[0-9]/.test(e.key) && e.key !== 'Tab' && e.key !== 'Backspace') { e.preventDefault(); }
-                                                    //handleKeyDown(e, index)
                                                 }}
                                                 className="w-1/8 px-2 py-1 border-b-2 border-gray-400 focus:outline-none"
                                             /> : null}
@@ -780,7 +770,6 @@ export default function App() {
                                                 onChange={(e) => updateItem(item.id, 'price', e.target.value, index)}
                                                 onKeyDown={(e) => {
                                                     if (!/[0-9]/.test(e.key) && e.key !== 'Backspace') { e.preventDefault(); }
-                                                    //handleKeyDown(e, index)
                                                 }}
                                                 className="w-1/8 px-2 py-1 border-b-2 border-gray-400 focus:outline-none"
                                             /> : null}
@@ -801,12 +790,14 @@ export default function App() {
                         </div>
                         <div className="flex-none flex flex-row items-center justify-between  gap-4 bottom-0 left-0 z-50 w-full py-5 px-2 border-1 border-taupe-300 shadow-sm">
                             <div className="flex flex-row items-center gap-2">
+                                {mainLoading ? <h2 className="spinner text-lg font-semibold">Loading...</h2> : null}
+                                {userData?.pictureUrl ? <img src={userData.pictureUrl} referrerPolicy="no-referrer" className="w-10 h-10 rounded-full" /> : null}
+                                {userData ? <h2 className="text-sm">{userData?.name}, {userData?.email}</h2> : null}
 
-                                {userData?.pictureUrl ? <img src={userData.pictureUrl} referrerPolicy="no-referrer" className="w-10 h-10 rounded-full" /> : <h3></h3>}
-                                {userData ? <h2 className="text-sm">{userData?.name}, {userData?.email}</h2> : <h2 className="text-sm"></h2>}
-
-                                {!userData ?
-                                    <Button onClick={() => Login()}>Σύνδεση με Google</Button>
+                                {!userData && !mainLoading ?
+                                    <a href={`${BACKEND_URL}/api/auth/login`}
+                                        className="h-9 px-4 py-2 has-[>svg]:px-3 bg-primary text-primary-foreground hover:bg-primary/90 inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none"
+                                    >Σύνδεση με Google</a>
                                     : <h2/>}
 
                                 
@@ -814,7 +805,7 @@ export default function App() {
                             
                             <div className="flex items-center gap-2  w-auto">
                                 
-                                <Button className="m-2">Btn2</Button>
+                                {/*<Button className="m-2">Btn2</Button>*/}
                             </div>
                         </div>
 

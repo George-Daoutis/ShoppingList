@@ -151,11 +151,12 @@ namespace ShoppingList.Server.Controllers
         {
             if (User.Identity?.IsAuthenticated == true)
             {
+                var name = User.Identity.Name;
                 var email = User.FindFirst(c => c.Type == ClaimTypes.Email)?.Value;
                 if (email != null)
                 {
                     //moved notification here for faster reaction
-                    await _hubContext.Clients.Group($"list_{listId}").NewNotification(email, listId);
+                    await _hubContext.Clients.Group($"list_{listId}").NewNotification(name, email, listId);
 
                     var response = await _shopListService.UpdateShopList(itemDTO, listId, email);
                     if (response != null)
@@ -176,10 +177,11 @@ namespace ShoppingList.Server.Controllers
         {
             if (User.Identity?.IsAuthenticated == true)
             {
+                var name = User.Identity.Name;
                 var email = User.FindFirst(c => c.Type == ClaimTypes.Email)?.Value;
                 if (email != null)
                 {
-                    await _hubContext.Clients.Group($"list_{listId}").NewNotification(email, listId);
+                    await _hubContext.Clients.Group($"list_{listId}").NewNotification(name, email, listId);
 
                     var response = await _shopListService.UpdateShopListAddItem(itemDTO, listId, email);
                     if (response != null)
@@ -199,10 +201,11 @@ namespace ShoppingList.Server.Controllers
         {
             if (User.Identity?.IsAuthenticated == true)
             {
+                var name = User.Identity.Name;
                 var email = User.FindFirst(c => c.Type == ClaimTypes.Email)?.Value;
                 if (email != null)
                 {
-                    await _hubContext.Clients.Group($"list_{listId}").NewNotification(email, listId);
+                    await _hubContext.Clients.Group($"list_{listId}").NewNotification(name, email, listId);
 
                     var response = await _shopListService.UpdateShopListRemoveItem(listId, itemId, email);
                     if (response != null)
@@ -222,10 +225,11 @@ namespace ShoppingList.Server.Controllers
         {
             if (User.Identity?.IsAuthenticated == true)
             {
+                var name = User.Identity.Name;
                 var email = User.FindFirst(c => c.Type == ClaimTypes.Email)?.Value;
                 if (email != null)
                 {
-                    await _hubContext.Clients.Group($"list_{listId}").NewNotification(email, listId);
+                    await _hubContext.Clients.Group($"list_{listId}").NewNotification(name, email, listId);
 
                     var response = await _shopListService.UpdateShopListItemById(itemDTO, listId, email);
                     if (response != null)
