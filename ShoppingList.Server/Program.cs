@@ -81,7 +81,7 @@ builder.Services.AddAuthentication(opt =>
         opt.ClientId = googleAuth["ClientId"];
         opt.ClientSecret = googleAuth["ClientSecret"];
 
-        opt.CallbackPath = "/api/auth/callback";
+        opt.CallbackPath = "/api/signin-google";
         opt.ClaimActions.MapJsonKey("picture", "picture");
     });
 builder.Services.AddAuthorization();
