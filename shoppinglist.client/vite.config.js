@@ -55,19 +55,31 @@ export default ({ mode }) => {
         },
         server: {
             proxy: {
-                '/api': API_URL
+                '/api': {
+                    target: API_URL,
+                    changeOrigin: true,
+                    secure: false,
+                    configure: (proxy) => {
+                        proxy.on('proxyRes', (proxyRes) => {
+                            const sc = proxyRes.headers && proxyRes.headers['set-cookie'];
+                            if (sc && Array.isArray(sc)) {
+                                proxyRes.headers['set-cookie'] = sc.map(c => c.replace(/;\s*Domain=[^;]+/i, ''));
+                            }
+                        });
+                    }
+                }
+                /*server: {
+                    proxy: {
+                        '/api': {API_URL}
+                    },
+                    host: true, //CHANGE THIS FOR LOCAL HOST
+                    port: parseInt(env.DEV_SERVER_PORT || '64099'),
+                    https: {
+                        key: fs.readFileSync(keyFilePath),
+                        cert: fs.readFileSync(certFilePath),
+                    }*/
             }
         }
-        /*server: {
-            proxy: {
-                '/api': {API_URL}
-            },
-            host: true, //CHANGE THIS FOR LOCAL HOST
-            port: parseInt(env.DEV_SERVER_PORT || '64099'),
-            https: {
-                key: fs.readFileSync(keyFilePath),
-                cert: fs.readFileSync(certFilePath),
-            }*/
     }
     );
 };

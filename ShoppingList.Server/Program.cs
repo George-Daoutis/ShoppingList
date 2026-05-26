@@ -81,7 +81,7 @@ builder.Services.AddAuthentication(opt =>
         opt.ClientId = googleAuth["ClientId"];
         opt.ClientSecret = googleAuth["ClientSecret"];
 
-        opt.CallbackPath = "/api/signin-google";
+        opt.CallbackPath = "/api/auth/callback";
         opt.ClaimActions.MapJsonKey("picture", "picture");
     });
 builder.Services.AddAuthorization();
@@ -126,7 +126,7 @@ builder.Services.Configure<CookiePolicyOptions>(opt =>
     {
         if (context.CookieName.StartsWith("__Host-ShoppingList_Auth"))
         {
-            context.CookieOptions.Extensions.Add("Partitioned");
+            //context.CookieOptions.Extensions.Add("Partitioned");
         }
     };
 });
