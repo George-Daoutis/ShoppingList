@@ -53,14 +53,14 @@ builder.Services.AddAuthentication(opt =>
 })
     .AddCookie(opt =>
     {
-        opt.Cookie.Name = "ShoppingList_Auth";
+        opt.Cookie.Name = "__Host-ShoppingList_Auth";
         opt.ExpireTimeSpan = TimeSpan.FromDays(30);
         opt.SlidingExpiration = true;
         opt.Cookie.HttpOnly = true;
         opt.Cookie.SameSite = SameSiteMode.None;
         opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 
-        opt.Cookie.Extensions.Add("Partitioned");
+        opt.Cookie.Path = "/; SameSite=None; Partitioned";
 
         opt.Events.OnRedirectToLogin = context =>
         {
