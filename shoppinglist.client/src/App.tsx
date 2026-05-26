@@ -512,7 +512,7 @@ export default function App() {
             })
 
             if (resp.status === 401) {
-                window.location.href = `${BACKEND_URL}/api/auth/login`;
+                //window.location.href = `${BACKEND_URL}/api/auth/login`;
                 return;
             }else if (!resp.ok) {
                 setIsGuest(true);

@@ -48,7 +48,7 @@ builder.Services.AddDataProtection().PersistKeysToDbContext<ListDBContext>();
 builder.Services.AddAuthentication(opt =>
 {
     opt.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    opt.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
+    opt.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     opt.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
 })
     .AddCookie(opt =>
@@ -57,7 +57,7 @@ builder.Services.AddAuthentication(opt =>
         opt.ExpireTimeSpan = TimeSpan.FromDays(30);
         opt.SlidingExpiration = true;
         opt.Cookie.HttpOnly = true;
-        opt.Cookie.SameSite = SameSiteMode.Lax;
+        opt.Cookie.SameSite = SameSiteMode.None;
         opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 
         opt.Cookie.Extensions.Add("Partitioned");

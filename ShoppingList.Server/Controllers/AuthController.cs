@@ -57,6 +57,7 @@ namespace ShoppingList.Server.Controllers
             return Redirect($"{_config["VITE_FRONTEND_URL"]}");
         }
 
+        [Authorize]
         [HttpGet("user")]
         public async Task<IActionResult> GetUser()
         {
