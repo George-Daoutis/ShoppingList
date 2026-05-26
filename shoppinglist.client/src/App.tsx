@@ -792,7 +792,12 @@ export default function App() {
                             <div className="flex flex-row items-center gap-2">
                                 {mainLoading ? <h2 className="spinner text-lg font-semibold">Loading...</h2> : null}
                                 {userData?.pictureUrl ? <img src={userData.pictureUrl} referrerPolicy="no-referrer" className="w-10 h-10 rounded-full" /> : null}
-                                {userData ? <h2 className="text-sm">{userData?.name}, {userData?.email}</h2> : null}
+                                {userData ?
+                                    <div>
+                                        <p className="font-semibold text-foreground">{userData?.name}</p>
+                                        <p className="text-sm text-muted-foreground">{userData?.email}</p>
+                                    </div>
+                                    : null }
 
                                 {!userData && !mainLoading ?
                                     <a href={`${BACKEND_URL}/api/auth/login`}
