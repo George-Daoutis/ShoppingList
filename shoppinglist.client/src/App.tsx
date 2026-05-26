@@ -174,27 +174,6 @@ export default function App() {
             }
             return await response.json();
         },
-        /*onMutate: async (patchItem) => {
-            await queryClient.cancelQueries({ queryKey: ['list', listId] })
-            const previousList = queryClient.getQueryData(['list', listId])
-            queryClient.setQueryData(['list', listId], (old: any) => {
-                const safeOld = old?.listedItems || [];
-                return {
-                    ...old,
-                    listedItems: safeOld?.map((item: Item) =>
-                        item.id === patchItem.id ? { ...item, ...patchItem } : item
-                    )
-                }
-            });
-            return { previousList };
-        },
-        onError: (err, patchItem, context) => {
-            if (context?.previousList) {
-                queryClient.setQueryData(['list', listId], context.previousList);
-            }
-        },
-        onSettled: () =>
-            queryClient.invalidateQueries({ queryKey: ['list', listId] })*/
         onSuccess: (returnedList) => {
             const safeData = Array.isArray(returnedList.listedItems) ? returnedList.listedItems : [];
             const mappedItems = safeData.map((itemDB: any, index: number) => ({
@@ -233,25 +212,6 @@ export default function App() {
             }
             return await response.json();
         },
-        /*onMutate: async (newItem) => {
-            await queryClient.cancelQueries({ queryKey: ['list', listId] })
-            const previousList = queryClient.getQueryData(['list', listId])
-            queryClient.setQueryData(['list', listId], (old: any) => {
-                const safeOld = old?.listedItems || [];
-                return {
-                    ...old,
-                    listedItems: [...safeOld, newItem]
-                }
-            });
-            return { previousList };
-        },
-        onError: (err, newItem, context) => {
-            if (context?.previousList) {
-                queryClient.setQueryData(['list', listId], context.previousList);
-            }
-        },*/
-        //onSettled: () =>
-            //queryClient.invalidateQueries({ queryKey: ['list', listId] }),
         onSuccess: (returnedList) => {
             const safeData = Array.isArray(returnedList.listedItems) ? returnedList.listedItems : [];
             const mappedItems = safeData.map((itemDB: any, index: number) => ({
@@ -299,26 +259,6 @@ export default function App() {
             }
             return await response.json();
         },
-        /*onMutate: async (deleteItem) => {
-            await queryClient.cancelQueries({ queryKey: ['list', listId] })
-            const previousList = queryClient.getQueryData(['list', listId])
-            queryClient.setQueryData(['list', listId], (old: any) => {
-                const safeOld = old?.listedItems || [];
-                const filteredData = safeOld.filter(i => i.id !== deleteItem.id);
-                return {
-                    ...old,
-                    listedItems: filteredData
-                }
-            });
-            return { previousList };
-        },
-        onError: (err, deleteItem, context) => {
-            if (context?.previousList) {
-                queryClient.setQueryData(['list', listId], context.previousList);
-            }
-        },
-        onSettled: () =>
-            queryClient.invalidateQueries({ queryKey: ['list', listId] }) */
         onSuccess: (returnedList) => {
             const safeData = Array.isArray(returnedList.listedItems) ? returnedList.listedItems : [];
             const mappedItems = safeData.map((itemDB: any, index: number) => ({
@@ -625,26 +565,6 @@ export default function App() {
         }
     }
 
-    /*
-    const fetchUser = async () => {
-        try {
-            const response = await fetch(`/api/auth/user`, {
-                method: "GET",
-                credentials: "include"
-            })
-            if (response.ok) {
-                setIsGuest(false);
-                return response.json();
-            }
-            else {
-                setIsGuest(true);
-            }
-            
-        }
-        catch (error) {
-            console.log("Fetch error.", error);
-        }
-    };*/
 
     const { data: userData, isLoading: mainLoading } = useQuery({
         queryKey: ['user'],

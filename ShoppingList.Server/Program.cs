@@ -57,7 +57,7 @@ builder.Services.AddAuthentication(opt =>
         opt.ExpireTimeSpan = TimeSpan.FromDays(30);
         opt.SlidingExpiration = true;
         opt.Cookie.HttpOnly = true;
-        opt.Cookie.SameSite = SameSiteMode.None;
+        opt.Cookie.SameSite = SameSiteMode.Lax;
         opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
 
         opt.Cookie.Extensions.Add("Partitioned");
