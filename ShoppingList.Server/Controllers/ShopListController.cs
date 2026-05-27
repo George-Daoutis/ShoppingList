@@ -15,13 +15,15 @@ namespace ShoppingList.Server.Controllers
     public class ShopListController : ControllerBase
     {
         private readonly IShopListService _shopListService;
+        private readonly IUserServices _userServices;
         private readonly IHubContext<NotificationHubService, INotificationHubService> _hubContext;
         
-        public ShopListController(IShopListService shopListService, IHubContext<NotificationHubService
+        public ShopListController(IShopListService shopListService, IUserServices userServices, IHubContext<NotificationHubService
             , INotificationHubService> notificationHubService)
         {
             _shopListService = shopListService;
             _hubContext = notificationHubService;
+            _userServices = userServices;
         }
 
         [Authorize]
@@ -36,6 +38,32 @@ namespace ShoppingList.Server.Controllers
                     var response = await _shopListService.GetShopListId(id, email);
                     if (response != null) return Ok(response);
                     else return BadRequest();
+                }
+                else return NotFound();
+            }
+            return Unauthorized();
+        }
+
+        [Authorize]
+        [HttpGet("init")]
+        public async Task<ActionResult> GetInitialData()
+        {
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                var name = User.Identity.Name;
+                var email = User.FindFirst(c => c.Type == ClaimTypes.Email)?.Value;
+                var googleId = User.FindFirst(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
+                var pictureUrl = User.FindFirst(c => c.Type == "picture")?.Value;
+                if (email != null)
+                {
+                    var user = await _userServices.GetUser(email);
+                    if (user == null)
+                    {
+                        await _userServices.CreateUser(new UserCreateDTO { Name = name, Email = email, GoogleId = googleId });
+                        user = await _userServices.GetUser(email);
+                        return Ok(new { user.Name, user.Email, user.AllLists, pictureUrl });
+                    }
+                    else return Ok(new { user.Name, user.Email, user.AllLists, pictureUrl });
                 }
                 else return NotFound();
             }
@@ -119,17 +147,93 @@ namespace ShoppingList.Server.Controllers
 
         [Authorize]
         [HttpPut("{listId}")]
-        public async Task<ActionResult<ShopList>> UpdateShopList([FromBody] ItemCreateDTO[] itemDTO, int listId)
+        public async Task<ActionResult<ShopListGetDTO>> UpdateShopList([FromBody] ItemCreateDTO[] itemDTO, int listId)
         {
             if (User.Identity?.IsAuthenticated == true)
             {
+                var name = User.Identity.Name;
                 var email = User.FindFirst(c => c.Type == ClaimTypes.Email)?.Value;
                 if (email != null)
                 {
+                    //moved notification here for faster reaction
+                    await _hubContext.Clients.Group($"list_{listId}").NewNotification(name, email, listId);
+
                     var response = await _shopListService.UpdateShopList(itemDTO, listId, email);
                     if (response != null)
                     {
-                        await _hubContext.Clients.Group($"list_{listId}").NewNotification(email, listId);
+                        //moved notification up ^
+                        return Ok(response);
+                    }
+                    else return BadRequest();
+                }
+                else return NotFound();
+            }
+            return Unauthorized();
+        }
+
+        [Authorize]
+        [HttpPost("add/{listId}")]
+        public async Task<ActionResult<ShopListGetDTO>> PatchItemAdd([FromBody] ItemPatchDTO itemDTO, int listId)
+        {
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                var name = User.Identity.Name;
+                var email = User.FindFirst(c => c.Type == ClaimTypes.Email)?.Value;
+                if (email != null)
+                {
+                    await _hubContext.Clients.Group($"list_{listId}").NewNotification(name, email, listId);
+
+                    var response = await _shopListService.UpdateShopListAddItem(itemDTO, listId, email);
+                    if (response != null)
+                    {
+                        return Ok(response);
+                    }
+                    else return BadRequest();
+                }
+                else return NotFound();
+            }
+            return Unauthorized();
+        }
+
+        [Authorize]
+        [HttpDelete("remove/{listId}/{itemId}")]
+        public async Task<ActionResult<ShopListGetDTO>> PatchItemRemove(int listId, int itemId)
+        {
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                var name = User.Identity.Name;
+                var email = User.FindFirst(c => c.Type == ClaimTypes.Email)?.Value;
+                if (email != null)
+                {
+                    await _hubContext.Clients.Group($"list_{listId}").NewNotification(name, email, listId);
+
+                    var response = await _shopListService.UpdateShopListRemoveItem(listId, itemId, email);
+                    if (response != null)
+                    {
+                        return Ok(response);
+                    }
+                    else return BadRequest();
+                }
+                else return NotFound();
+            }
+            return Unauthorized();
+        }
+
+        [Authorize]
+        [HttpPatch("{listId}")]
+        public async Task<ActionResult<ShopListGetDTO>> PatchItemEdit([FromBody] ItemPatchDTO[] itemDTO, int listId)
+        {
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                var name = User.Identity.Name;
+                var email = User.FindFirst(c => c.Type == ClaimTypes.Email)?.Value;
+                if (email != null)
+                {
+                    await _hubContext.Clients.Group($"list_{listId}").NewNotification(name, email, listId);
+
+                    var response = await _shopListService.UpdateShopListItemById(itemDTO, listId, email);
+                    if (response != null)
+                    {
                         return Ok(response);
                     }
                     else return BadRequest();

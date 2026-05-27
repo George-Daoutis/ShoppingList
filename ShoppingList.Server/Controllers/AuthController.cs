@@ -1,5 +1,4 @@
-﻿using Google.Apis.Auth;
-using Microsoft.AspNetCore.Authentication;
+﻿using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.Authorization;
@@ -13,7 +12,6 @@ namespace ShoppingList.Server.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [EnableRateLimiting("fixed")]
-    [AllowAnonymous]
     public class AuthController : ControllerBase
     {
         private readonly IUserServices _userServices;
@@ -30,7 +28,9 @@ namespace ShoppingList.Server.Controllers
         {
             return Challenge(new AuthenticationProperties
             {
-                RedirectUri = "/api/auth/callback"
+                RedirectUri = "/api/auth/callback",
+                IsPersistent = true,
+                ExpiresUtc = DateTimeOffset.UtcNow.AddDays(30)
             }, GoogleDefaults.AuthenticationScheme);
         }
 
@@ -46,10 +46,18 @@ namespace ShoppingList.Server.Controllers
             };
 
             var result = await HttpContext.AuthenticateAsync(CookieAuthenticationDefaults.AuthenticationScheme);
+            if (!result.Succeeded) return Unauthorized();
 
-            return Redirect($"{_config["VITE_API_URL"]}");
+            await HttpContext.SignInAsync(
+                CookieAuthenticationDefaults.AuthenticationScheme,
+                result.Principal,
+                authProperties
+                );
+
+            return Redirect($"{_config["VITE_FRONTEND_URL"]}");
         }
 
+        [Authorize]
         [HttpGet("user")]
         public async Task<IActionResult> GetUser()
         {
@@ -59,9 +67,10 @@ namespace ShoppingList.Server.Controllers
                 var email = User.FindFirst(c => c.Type == ClaimTypes.Email)?.Value;
                 var googleId = User.FindFirst(c => c.Type == ClaimTypes.NameIdentifier)?.Value;
                 var user = await _userServices.GetUser(email);
+                var pictureUrl = User.FindFirst(c => c.Type == "picture")?.Value;
                 if (user != null)
                 {
-                    return Ok(user);
+                    return Ok(new { user.Name, user.Email, user.AllLists, pictureUrl});
                 }
                 else
                 {

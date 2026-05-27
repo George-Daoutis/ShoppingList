@@ -2,32 +2,46 @@
 import { useState, useEffect, useRef } from 'react';
 import './App.css';
 import { Button } from '@/components/ui/button.js';
-import { Sidebar, SidebarTrigger, SidebarProvider, useSidebar, SidebarInset } from '@/components/ui/sidebar.js';
+import { Sidebar, SidebarTrigger, SidebarProvider, useSidebar, SidebarInset } from '@/components/ui/sidebar.tsx';
+import { RenameIcon, ShareIcon, LogoutIcon } from '@/components/icons.tsx';
 import { useDebounce } from './debounce.tsx';
 import { NameModal, ShareModal } from './Modals.js';
 import { ConfirmModal } from './ConfirmModal.js';
 import { useNotificationSocket } from './SignalRNotifications.js';
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 
 const FRONTEND_URL = import.meta.env.VITE_FRONTEND_URL;
 const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
 
-interface User { 
-    name: string;
-    email: string
+interface User {
+    name: string,
+    email: string,
+    allLists: List[],
+    pictureUrl: string
 }
 
 interface List {
     id: number,
-    title: string
+    title: string,
+    listedItems: Item[]
 }
 
 interface Item {
-    id: number,
-    isChecked: false,
+    id: string | number,
+    isChecked: boolean,
     name: string,
     quantity: string,
-    price: string
+    price: string,
+    position: number
+}
+
+const emptyRow: Item = {
+    id: `temp-${Date.now()}`,
+    name: '',
+    quantity: '',
+    price: '',
+    isChecked: false,
+    position: -1
 }
 
 //CUSTOM TRIGGER FOR SIDEBAR BUTTON
@@ -51,12 +65,13 @@ export function CustomTrigger({
 
 
 export default function App() {
-    //const [userData, setUserData] = useState < User | null > (null);   REPLACED
-    //const [isLoadings, setLoading] = useState(true);   NOT USED
+    const [hasQty, setHasQty] = useState(false);
+    const [hasPrice, setHasPrice] = useState(false);
+    const inputRefs = useRef([]);
     const [isGuest, setIsGuest] = useState(true);
     const [listId, setListId] = useState<number | null>();
-    const [listTitle, setListTitle] = useState();
-    //const [userLists, setUserLists] = useState([]);   REPLACED
+    const [listTitle, setListTitle] = useState<string>();
+    const [userLists, setUserLists] = useState([]);
 
     // REPLACED
     //const [items, setItems] = useState([
@@ -64,11 +79,14 @@ export default function App() {
     //]);
 
     const [items, setItems] = useState<Item[]>([]);
+    //const [itemToUpdate, setItemToUpdate] = useState<Item>();
 
-    const debouncedSave = useDebounce(items, 500)
+    const [changeSet, setChangeSet] = useState<Item[]>([]);
+    const debouncedSave = useDebounce(changeSet, 500);
     const [needSave, setNeedSave] = useState(false);
 
-    useNotificationSocket(listId, debouncedSave);
+    const [notifMessage, setNotifMessage] = useState("Πάτησε ENTER για να καταχωρηθεί η γραμμή.");
+    
     const queryClient = useQueryClient();
 
     //MODALS
@@ -76,7 +94,7 @@ export default function App() {
     const [isRenameOpen, setIsRenameOpen] = useState(false);
     const handleNameSubmit = async (newName: string) => {
         try {
-            const response = await fetch(`/api/shoplist/rename/${listId}`, {
+            const response = await fetch(`${BACKEND_URL}/api/shoplist/rename/${listId}`, {
                 method: "PUT",
                 credentials: "include",
                 headers: {
@@ -111,202 +129,241 @@ export default function App() {
     }
 
 
-    const inputRefs = useRef([]);
-
-
-
-
     
+    // SAVE AND DEBOUNCE
 
-
-    //TO BE REPLACED
-    //USER FETCH AND AUTHORIZATION
-    /*useEffect(() => {
-        const initiateAuthorization = async () => {
-            //UserSetting();
-            /*const checkLoginStatus = async () => {
-                try {
-                    const resp = await fetch(`/api/auth/user`, {
-                        method: "GET",
-                        credentials: "include"
-                    })
-                    if (resp.ok) {
-                        const data = await resp.json();
-                        setUserData(data);
-                        setIsGuest(false);
-                    } else {
-                        setUserData(null);
-                        setIsGuest(true);
-                    }
-                }
-                catch (error) {
-                    console.log(error);
-                }
-                finally {
-                    setLoading(false);
-                }
-            }
-            checkLoginStatus();/
-        }
-        initiateAuthorization();
-    }, []); */
-
-
-
-
-    //LIST LOADING
-    const loadAllLists = async (): Promise<List[]> => {
-        try {
-            const resp = await fetch(`/api/shoplist`, {
-                method: "GET",
-                credentials: "include"
-            })
-            const data = await resp.json();
-            if (data[0] != null) {
-                setListId(listId ? listId : data[0].id);
-            } else {
-                CreateList();
-                return;
-            }
-            return data;
-        }
-        catch (error) {
-            console.log(error);
-        }
-    }
-
-
-    const loadList = async (id): Promise<Item[]> => {
-        try {
-            const resp = await fetch(`/api/shoplist/${id}`, {
-                method: "GET",
-                credentials: "include"
-            })
-
-            const emptyRow: Item = {
-                id: Date.now(),
-                name: '',
-                quantity: '',
-                price: '',
-                isChecked: false
-            }
-
-            const data = await resp.json();
-            
-            setListId(data.id);
-            setListTitle(data.title);
-
-            const safeData = Array.isArray(data.listedItems) ? data.listedItems : (data.listedItems?.items || []);
-            const mappedItems = safeData.map((itemDB: any, index: number) => ({
-                id: itemDB.id === 0 ? `temp-${index}-${Date.now()}` : itemDB.id,  //temp for unique ID
-                name: itemDB.name || '',
-                quantity: itemDB.quantity || '',
-                price: itemDB.price || '',
-                isChecked: itemDB.isChecked || false
-            }));
-            
-
-            if ([...mappedItems].length > 0) {
-                setItems([...mappedItems]);
-                const list: Item[] = [...mappedItems];
-                return list;
-            }
-            else {
-                setItems([...mappedItems, emptyRow]);
-                const list: Item[] = [...mappedItems, emptyRow];
-                return list;
-            }
-        }
-        catch (error) {
-            console.log(error);
-        }
-    }
-
-
-
-
-
-    // SAVE FUNCTION AND DEBOUNCE
-    interface ItemToSend {
+    interface ItemToSendWithPositions {
+        Id: number,
         Name: string,
         Price: number,
         Quantity: number,
-        IsChecked: boolean
+        IsChecked: boolean,
+        Position: any
     }
 
-    const SaveList = async () => {
-        try {
-            const payload: ItemToSend[] = items.filter(item => item.name && item.name.trim() !== "").map(item => ({
+
+    const patchItem = useMutation({
+        mutationFn: async (patchItems: Item[]) => {
+            const payload = patchItems.map((item => ({
+                Id: Number(item.id) || -1,
                 Name: item.name,
                 Price: Number(item.price) || 0,
                 Quantity: Number(item.quantity) || 0,
-                IsChecked: item.isChecked
-            }));
-            const response = await fetch(`/api/shoplist/${listId}`, {
-                method: "PUT",
+                IsChecked: item.isChecked,
+                Position: item.position
+            })))
+            const response = await fetch(`${BACKEND_URL}/api/shoplist/${listId}`, {
+                method: "PATCH",
                 credentials: "include",
                 headers: {
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(payload)
             });
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return await response.json();
+        },
+        onSuccess: (returnedList) => {
+            const safeData = Array.isArray(returnedList.listedItems) ? returnedList.listedItems : [];
+            const mappedItems = safeData.map((itemDB: any, index: number) => ({
+                id: itemDB.id === 0 ? `temp-${index}-${Date.now()}` : itemDB.id,
+                name: itemDB.name || '',
+                quantity: itemDB.quantity || '',
+                price: itemDB.price || '',
+                isChecked: itemDB.isChecked || false,
+                position: itemDB.position
+            }));
+            const list: List = { id: returnedList.id, title: returnedList.title, listedItems: [...mappedItems, emptyRow] };
+            queryClient.setQueryData(['list', listId], list)
         }
-        catch (error) {
-            console.log("List Save Failed.", error);
+    });
+
+    const addItem = useMutation({
+        mutationFn: async (newItem: ItemToSendWithPositions) => {
+            const payload: ItemToSendWithPositions = {
+                Id: Number(newItem.Id) || -1,
+                Name: newItem.Name,
+                Price: Number(newItem.Price) || 0,
+                Quantity: Number(newItem.Quantity) || 0,
+                IsChecked: newItem.IsChecked,
+                Position: newItem.Position
+            };
+            const response = await fetch(`${BACKEND_URL}/api/shoplist/add/${listId}`, {
+                method: "POST",
+                credentials: "include",
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return await response.json();
+        },
+        onSuccess: (returnedList) => {
+            const safeData = Array.isArray(returnedList.listedItems) ? returnedList.listedItems : [];
+            const mappedItems = safeData.map((itemDB: any, index: number) => ({
+                id: itemDB.id === 0 ? `temp-${index}-${Date.now()}` : itemDB.id,
+                name: itemDB.name || '',
+                quantity: itemDB.quantity || '',
+                price: itemDB.price || '',
+                isChecked: itemDB.isChecked || false,
+                position: itemDB.position
+            }));
+            setItems((prevItems) => {
+                const mergedItems = prevItems.map((localItem, index) => {
+                    const serverItem = mappedItems.find(dbItem => dbItem.position === localItem.position) || mappedItems[index];
+                    if (serverItem && (String(localItem.id).startsWith('temp'))) {
+                        return {
+                            ...localItem,
+                            id: serverItem.id
+                        };
+                    }
+                    return localItem;
+                });
+                const list: List = { id: returnedList.id, title: returnedList.title, listedItems: [...mergedItems, emptyRow] };
+                queryClient.setQueryData(['list', listId], list)
+
+                return mergedItems;
+            })
+            
+            //setItems([...mappedItems, emptyRow]);
         }
-    }
+    })
+
+    const removeItem = useMutation({
+        mutationFn: async (deleteItem: Item) => {
+            if (deleteItem.id.toString().startsWith("temp")) return null;
+
+            const response = await fetch(`${BACKEND_URL}/api/shoplist/remove/${listId}/${deleteItem.id}`, {
+                method: "DELETE",
+                credentials: "include",
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return await response.json();
+        },
+        onSuccess: (returnedList) => {
+            const safeData = Array.isArray(returnedList.listedItems) ? returnedList.listedItems : [];
+            const mappedItems = safeData.map((itemDB: any, index: number) => ({
+                id: itemDB.id === 0 ? `temp-${index}-${Date.now()}` : itemDB.id,
+                name: itemDB.name || '',
+                quantity: itemDB.quantity || '',
+                price: itemDB.price || '',
+                isChecked: itemDB.isChecked || false,
+                position: itemDB.position
+            }));
+            const list: List = { id: returnedList.id, title: returnedList.title, listedItems: [...mappedItems, emptyRow] };
+            queryClient.setQueryData(['list', listId], list)
+        }
+    })
     
 
     useEffect(() => {
-        if (debouncedSave && !isGuest && needSave) {
-            SaveList();
-            setNeedSave(false);
+        if (!isGuest && needSave) {
+            if (changeSet.length > 0) {
+                patchItem.mutate(changeSet);
+                setChangeSet([]);
+                setNeedSave(false);
+            }
         }
     }, [debouncedSave])
 
 
 
 
+    const [focusIndex, setFocusIndex] = useState<number>();
+    useEffect(() => {
+        if (focusIndex !== undefined && focusIndex !== null) {
+            inputRefs.current[focusIndex]?.focus();
+        }
+    },[items, focusIndex])
 
-    //ITEM AND KEY HANDLES
-    const updateItem = (id, field, value) => {
-        setItems(items.map(item =>
+
+    //ITEM UPDATES AND KEY HANDLES
+    const updateItem = (id, field, value, index) => {
+        const updatedList = items.map(item =>
             item.id === id ? { ...item, [field]: value } : item
-        ));
-        setNeedSave(true);
+        );
+
+        const updatedItem = updatedList.find(item => item.id == id);
+
+        setFocusIndex(index);
+
+        setItems(updatedList);
+        if (updatedItem && !id.toString().startsWith("temp")) {
+            //setItemToUpdate(updatedItem);
+            setChangeSet(prev => [...prev, updatedItem])
+            setNeedSave(true);
+        }
     };
 
     const handleKeyDown = (e, index) => {
         if (e.key === 'Enter') {
             e.preventDefault();
-            const newItem: Item = { id: Date.now(), isChecked: false, name: '', quantity: '', price: '' };
-
-            const newItems = [...items];
-            newItems.splice(index + 1, 0, newItem);
-            setItems(newItems);
-
-            // Focus the new input on the next render
-            setTimeout(() => {
-                if (inputRefs.current[index + 1]) {
-                    inputRefs.current[index + 1].focus();
+            e.stopPropagation();
+            const currentItem = items[index];
+            if (currentItem.position === -1.0) {
+                if (items.length === 1) {
+                    currentItem.position = 1.0;
+                } else {
+                    currentItem.position = items[index - 1].position + 1.0;
                 }
-            }, 10);
+            }
+            if (currentItem.name && currentItem.name.trim() !== "") {
+                if (currentItem.id.toString().startsWith("temp")) {
+                    addItem.mutate({
+                        Id: Number(currentItem.id),
+                        Name: currentItem.name,
+                        Price: Number(currentItem.price) || 0,
+                        Quantity: Number(currentItem.quantity) || 0,
+                        IsChecked: currentItem.isChecked,
+                        Position: currentItem.position
+                    }); //is this fine?
+                }
+
+                setFocusIndex(index + 1);
+
+                const nextItem = items[index + 1];
+                const abovePos = currentItem.position;
+                const belowPos = nextItem ? nextItem.position : null;
+
+                let newPosition;
+                if (belowPos === null || belowPos === -1.0) {
+                    newPosition = abovePos + 1.0;
+                } else {
+                    newPosition = (abovePos + belowPos) / 2.0;
+                }
+
+                const newItem: Item = { id: `temp-${index}-${Date.now()}`, isChecked: false, name: '', quantity: '', price: '', position: newPosition };
+                const newItems = [...items];
+                newItems.splice(index + 1, 0, newItem);
+                setItems(newItems);
+
+            }
         }
 
 
         if (e.key === 'Backspace' && items[index].name === '' && items.length > 1) {
             e.preventDefault();
+            setFocusIndex(index - 1);
+
+            if (!items[index].id.toString().startsWith("temp")) {
+                removeItem.mutate(items[index]);
+            }
             const newItems = items.filter((_, i) => i !== index);
             setItems(newItems);
-            // Focus previous line
-            if (inputRefs.current[index - 1]) {
-                inputRefs.current[index - 1].focus();
-            }
         }
     };
 
     const handleChange = (e, index) => {
-        //console.log(items[index].name.length)
         if (items[index].name.length === 1 && items.length <= 1) {
             items[index].quantity = '';
             items[index].price = '';
@@ -315,18 +372,15 @@ export default function App() {
 
 
 
-    /* LOADING, LOGIN AND LOGOUT
-    if (isLoading) {
-        return <div>Checking authentication...</div>;
-    }*/
-
+    
+    /* REMOVED CAUSE OF FIREFOX CORS ISSUE!
     const Login = async () => {
-        window.location.href = `/api/auth/login`;
-    }
+        window.location.href = `${BACKEND_URL}/api/auth/login`;
+    }*/
 
     const Logout = async () => {
         try {
-            const response = await fetch(`/api/auth/logout`, {
+            const response = await fetch(`${BACKEND_URL}/api/auth/logout`, {
                 method: "POST",
                 credentials: "include"
             });
@@ -344,13 +398,67 @@ export default function App() {
 
 
 
+    //LIST LOADING
+    const loadAllLists = async (): Promise<List[]> => {
+        try {
+            const resp = await fetch(`${BACKEND_URL}/api/shoplist`, {
+                method: "GET",
+                credentials: "include"
+            })
+            const data = await resp.json();
+            if (data[0] != null) {
+                setListId(listId ? listId : data[0].id);
+            } else {
+                CreateList();
+                return;
+            }
+            setUserLists(data);
+            return data;
+        }
+        catch (error) {
+            console.log(error);
+        }
+    }
+
+
+    const loadList = async (id): Promise<List> => {
+        try {
+            const resp = await fetch(`${BACKEND_URL}/api/shoplist/${id}`, {
+                method: "GET",
+                credentials: "include"
+            })
+
+            const data = await resp.json();
+            
+            //setListId(data.id);
+            setListTitle(data.title);
+
+            const safeData = Array.isArray(data.listedItems) ? data.listedItems : [];
+            const mappedItems = safeData.map((itemDB: any, index: number) => ({
+                id: itemDB.id === 0 ? `temp-${index}-${Date.now()}` : itemDB.id,
+                name: itemDB.name || '',
+                quantity: itemDB.quantity || '',
+                price: itemDB.price || '',
+                isChecked: itemDB.isChecked || false,
+                position: itemDB.position
+            }));
+
+            const list: List = { id: data.id, title: data.title, listedItems: [...mappedItems, emptyRow] };
+            setItems(list.listedItems);
+            return list;
+        }
+        catch (error) {
+            console.log(error);
+        }
+    }
+
     // CREATE AND DELETE LIST
     const CreateList = async () => {
         try {
             const payload = {
                 Title: "New List"
             }
-            const response = await fetch(`/api/shoplist/`, {
+            const response = await fetch(`${BACKEND_URL}/api/shoplist/`, {
                 method: "POST",
                 credentials: "include",
                 headers: {
@@ -370,7 +478,7 @@ export default function App() {
 
     const DeleteList = async (id: Number) => {
         try {
-            const response = await fetch(`/api/shoplist/${id}`, {
+            const response = await fetch(`${BACKEND_URL}/api/shoplist/${id}`, {
                 method: "DELETE",
                 credentials: "include",
             });
@@ -389,103 +497,67 @@ export default function App() {
 
     const firstLoad = async () => {
         try {
-            const resp = await fetch(`/api/shoplist/init`, {
+            const resp = await fetch(`${BACKEND_URL}/api/shoplist/init`, {
                 method: "GET",
                 credentials: "include"
             })
 
-            if (resp.status != 200) {
+            if (resp.status === 401) {
+                //window.location.href = `${BACKEND_URL}/api/auth/login`;
+                return;
+            }else if (!resp.ok) {
                 setIsGuest(true);
                 return;
             }
-            const data = resp.json();
-            console.log(data);
-            let user = null;
-            let allLists = null;
-            let currentList = null;
-
-            if (data[1] != null) {
-                user = data[0];
-                allLists = data[1];
-            }
-            else {
-                user = data;
-            }
-            if (data[2] != null) {
-                currentList = data[2];
-            }
+            const data = await resp.json() as unknown as User;
 
 
-            if (allLists != null) {
-                if (allLists[0] != null) {
-                    setListId(listId ? listId : allLists[0].id);
+            if (data.allLists.length > 0) {
+                if (data.allLists[0] != null) {
+                    setListId(listId ? listId : data.allLists[0].id);
                 } else {
                     CreateList();
                 }
-                setUserLists(allLists);
+                setUserLists(data.allLists);
             }
 
 
-
-            if (currentList != null) {
-                const emptyRow: Item = {
-                    id: Date.now(),
-                    name: '',
-                    quantity: '',
-                    price: '',
-                    isChecked: false
-                }
-
+            if (data.allLists[0] != null) {
+                const currentList: List = data.allLists[0];
                 setListId(currentList.id);
                 setListTitle(currentList.title);
 
-                const safeData = Array.isArray(currentList.listedItems) ? currentList.listedItems : (currentList.listedItems?.items || []);
+                const safeData = Array.isArray(currentList.listedItems) ? currentList.listedItems : [];
                 const mappedItems = safeData.map((itemDB: any, index: number) => ({
                     id: itemDB.id === 0 ? `temp-${index}-${Date.now()}` : itemDB.id,  //temp for unique ID
                     name: itemDB.name || '',
                     quantity: itemDB.quantity || '',
                     price: itemDB.price || '',
-                    isChecked: itemDB.isChecked || false
+                    isChecked: itemDB.isChecked || false,
+                    position: itemDB.position
                 }));
 
+                setItems([...mappedItems, emptyRow]);
 
+                /*
                 if ([...mappedItems].length > 0) {
                     setItems([...mappedItems]);
                 }
                 else {
                     setItems([...mappedItems, emptyRow]);
-                }
+                }*/
             }
 
             setIsGuest(false);
-            return user;
+            return data;
         }
         catch (error) {
             console.log(error);
         }
     }
 
-    const fetchUser = async () => {
-        try {
-            const response = await fetch(`/api/auth/user`, {
-                method: "GET",
-                credentials: "include"
-            })
-            if (response.ok) {
-                setIsGuest(false);
-                return response.json();
-            }
-            else {
-                setIsGuest(true);
-            }
-            
-        }
-        catch (error) {
-            console.log("Fetch error.", error);
-        }
-    };
 
-    const { data: user } = useQuery({
+    const { data: userData, isLoading: mainLoading } = useQuery({
         queryKey: ['user'],
         queryFn: firstLoad,
         enabled: !!isGuest
@@ -496,142 +568,160 @@ export default function App() {
         queryKey: ['user'],
         queryFn: fetchUser,
         enabled: !!isGuest
-    });
+    }); */
 
 
     const { data: allLists, refetch: allListRefetch } = useQuery({
         queryKey: ['allLists'],
         queryFn: loadAllLists,
-        enabled: user != null,
+        enabled: false,
         refetchOnWindowFocus: false
     });
 
 
-    const {refetch: loadListRefetch } = useQuery({
+    const {data: serverList, refetch: loadListRefetch } = useQuery({
         queryKey: ['list', listId],
         queryFn: () => loadList(listId),
-        enabled: listId != null,
+        enabled: !!listId,
         refetchOnWindowFocus: false
     });
 
+    useEffect(() => {
+        const isUserTyping = addItem.isPending || removeItem.isPending || patchItem.isPending;
+        
+        if (serverList && !isUserTyping) {
+            //setItems(serverList.listedItems);
+        }
+    },[serverList, addItem.isPending, removeItem.isPending, patchItem.isPending])
 
 
     //ADDS 1 LINE FOR GUESTS
     useEffect(() => {
         if (isGuest) {
-            const emptyRow: Item = {
-                id: Date.now(),
-                name: '',
-                quantity: '',
-                price: '',
-                isChecked: false
-            }
             setItems([emptyRow]);
         }
-    },[user])
+    }, [userData])
 
-
+    useNotificationSocket(listId, userData?.email, debouncedSave, (msg) => {
+        setNotifMessage(msg);
+        setTimeout(() => setNotifMessage("Πάτησε ENTER για να καταχωρηθεί η γραμμή."), 30000)
+    });
 
     if (items) {
         return (
-            <div className="fixed">
+            <div className="fixed inset-0 flex flex-col overflow-hidden">
                 
                 
 
                 <SidebarProvider defaultOpen={false}>
-                    <SidebarInset>
+                    <SidebarInset className="flex flex-col h-full overflow-hidden">
 
 
-
-                        <SidebarTrigger />
-
+                        <div className="flex p-4 items-center justify-between">
+                            <SidebarTrigger />
+                            <div className="flex flex-row gap-5 px-5">
+                                <Button onClick={() => console.log("clicked")}>Refresh</Button>
+                                <Button onClick={() => console.log("clicked")}>Remove Done</Button>
+                                <Button disabled={isGuest ? true : false} onClick={() => setIsRenameOpen(true)}>{<RenameIcon/>}</Button>
+                                <Button disabled={isGuest ? true : false} onClick={() => setIsShareOpen(true)}>{<ShareIcon/>}</Button>
+                            </div>
+                        </div>
                         
-                        <div className="w-full">
-                            <div className="flex flex-row md:flex-row items-center justify-between gap-4 p-1">
-                                <h2 className="whitespace-nowrap">{listId ? listTitle : "New List"}</h2>
-                                <div className="flex flex-row gap-2">
-                                    <Button disabled={isGuest ? true : false} onClick={() => setIsRenameOpen(true)}>Rename</Button>
-                                    <Button disabled={isGuest ? true : false} onClick={() => setIsShareOpen(true) }>Share</Button>
+                        <div className="flex flex-col h-full overflow-hidden w-full max-w-4xl mx-auto px-3">
+                            <div className="flex-none flex flex-row items-center justify-between gap-4 p-1">
+                                {mainLoading ? <h2 className="spinner whitespace-nowrap text-lg font-semibold">Loading...</h2> :
+                                    <h2 className="whitespace-nowrap text-lg font-semibold">{listId ? listTitle : "Νέα Λίστα"}</h2>}
+                                
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto pr-2">
+                                <div className="flex flex-col w-full max-w-3xl mx-auto py-10 pb-48" >
+                                    {items?.map((item, index) => (
+                                        <div
+                                            key={item.id}
+                                            className={`flex flex-row items-center w-full gap-1 p-0.5 
+                                    ${item.isChecked ? `line-through text-gray-400 bg-[oklch(0.95_0.02_87)]` : `text-gray-900`}`}
+                                        >
+                                            <input
+                                                type="checkbox"
+                                                checked={item.isChecked}
+                                                onChange={(e) => updateItem(item.id, 'isChecked', e.target.checked, index)}
+                                                className="w-8 h-4 accent-black"
+                                            />
+                                            <input
+                                                ref={el => { if (el) { inputRefs.current[index] = el; } else { delete inputRefs.current[index] } }}
+                                                type="text"
+                                                value={item.name}
+                                                placeholder="Νέα Γραμμή..."
+                                                spellCheck="false"
+                                                onChange={(e) => { updateItem(item.id, 'name', e.target.value, index); handleChange(e, index); }}
+                                                onKeyDown={(e) => handleKeyDown(e, index)}
+                                                enterKeyHint="enter"
+                                                className={`flex-1 min-w-0 px-2 py-1 border-b-2 ${String(item.id).startsWith("temp") ? `border-rose-300` : `border-emerald-500`} focus:outline-none`}
+                                            />
+                                            {hasQty ? <input
+                                                type="text"
+                                                placeholder="Qty"
+                                                maxLength={3}
+                                                inputMode="decimal"
+                                                value={item.quantity}
+                                                onChange={(e) => updateItem(item.id, 'quantity', e.target.value, index)}
+                                                onKeyDown={(e) => {
+                                                    if (!/[0-9]/.test(e.key) && e.key !== 'Tab' && e.key !== 'Backspace') { e.preventDefault(); }
+                                                }}
+                                                className="w-1/8 px-2 py-1 border-b-2 border-gray-400 focus:outline-none"
+                                            /> : null}
+                                        
+                                            {hasPrice ? <input
+                                                type="text"
+                                                maxLength={4}
+                                                placeholder="$"
+                                                value={item.price}
+                                                inputMode="decimal"
+                                                onChange={(e) => updateItem(item.id, 'price', e.target.value, index)}
+                                                onKeyDown={(e) => {
+                                                    if (!/[0-9]/.test(e.key) && e.key !== 'Backspace') { e.preventDefault(); }
+                                                }}
+                                                className="w-1/8 px-2 py-1 border-b-2 border-gray-400 focus:outline-none"
+                                            /> : null}
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                            
-                            <div className="flex flex-col items-center py-10 " >
-                                {items?.map((item, index) => (
-                                    <div
-                                        key={item.id}
-                                        className={`flex flex-row items-center gap-1 p-0.5 
-                                ${item.isChecked ? `line-through text-gray-400 bg-gray-50` : `text-gray-900`}`}
-                                    >
-                                        <input
-                                            type="checkbox"
-                                            checked={item.isChecked}
-                                            onChange={(e) => updateItem(item.id, 'isChecked', e.target.checked)}
-                                            className="w-1/8"
-                                        />
-                                        <input
-                                            ref={el => { if (el) { inputRefs.current[index] = el; } else { delete inputRefs.current[index] } }}
-                                            type="text"
-                                            value={item.name}
-                                            placeholder="Item name..."
-                                            spellCheck="false"
-                                            onChange={(e) => { updateItem(item.id, 'name', e.target.value); handleChange(e, index); }}
-                                            onKeyDown={(e) => handleKeyDown(e, index)}
-                                            enterKeyHint="enter"
-                                            className="w-full px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
-                                        />
-                                        <input
-                                            type="text"
-                                            placeholder="Qty"
-                                            maxLength={3}
-                                            inputMode="decimal"
-                                            value={item.quantity}
-                                            onChange={(e) => updateItem(item.id, 'quantity', e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (!/[0-9]/.test(e.key) && e.key !== 'Tab' && e.key !== 'Backspace') { e.preventDefault(); }
-                                                //handleKeyDown(e, index)
-                                            }}
-                                            className="w-1/8 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
+                        </div>
 
-                                        />
-                                        <input
-                                            type="text"
-                                            maxLength={4}
-                                            placeholder="$"
-                                            value={item.price}
-                                            inputMode="decimal"
-                                            onChange={(e) => updateItem(item.id, 'price', e.target.value)}
-                                            onKeyDown={(e) => {
-                                                if (!/[0-9]/.test(e.key) && e.key !== 'Backspace') { e.preventDefault(); }
-                                                //handleKeyDown(e, index)
-                                            }}
-                                            className="w-1/8 px-2 py-1 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-400"
 
-                                        />
+
+                        <div className="flex-none flex flex-row items-center justify-center gap-4 bottom-0 left-0 z-50 w-full py-2 px-2">
+                            <div className="w-full md:w-2/3 lg:w-1/2 border-r-4 border-l-4 border-taupe-300 rounded py-1 px-1 overflow-hidden whitespace-nowrap">
+                                <div className="w-full animate-marquee inline-block w-max pl-[100%]" aria-hidden="true">
+                                    <span className="">{notifMessage}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex-none flex flex-row items-center justify-between  gap-4 bottom-0 left-0 z-50 w-full py-5 px-2 border-1 border-taupe-300 shadow-sm">
+                            <div className="flex flex-row items-center gap-2">
+                                {mainLoading ? <h2 className="spinner text-lg font-semibold">Loading...</h2> : null}
+                                {userData?.pictureUrl ? <img src={userData.pictureUrl} referrerPolicy="no-referrer" className="w-10 h-10 rounded-full" /> : null}
+                                {userData ?
+                                    <div>
+                                        <p className="font-semibold text-foreground">{userData?.name}</p>
+                                        <p className="text-sm text-muted-foreground">{userData?.email}</p>
                                     </div>
-                                ))}
+                                    : null }
+
+                                {!userData && !mainLoading ?
+                                    <a href={`${BACKEND_URL}/api/auth/login`}
+                                        className="h-9 px-4 py-2 has-[>svg]:px-3 bg-primary text-primary-foreground hover:bg-primary/90 inline-flex shrink-0 items-center justify-center gap-2 rounded-md text-sm font-medium whitespace-nowrap transition-all outline-none"
+                                    >Σύνδεση με Google</a>
+                                    : <h2/>}
+
+                                
                             </div>
-                        </div>
-
-
-
-
-                        <div>
-                            {isGuest ? <h2>Log in to save your lists!</h2> : ""}
-                            <br/>
-                            {user ? 
-                                <Button onClick={() => Logout()}>Log out</Button>
-                                : <Button onClick={() => Login()}>Log in with Google</Button>}
                             
-                            <h2>{user?.name}, {user?.email}</h2>
-                        </div>
-
-                        <div className="fixed flex flex-row items-center justify-between gap-4 bottom-0 left-0 w-full p-5 border rounded-t-lg shadow-sm">
-                            <div>
-                                 <Button className="m-2">Btn</Button>
-                            </div>
-                            <div className="flex items-center gap-2 w-auto">
-                                <input placeholder="a" className="border"/>
-                                <Button className="m-2">Btn2</Button>
+                            <div className="flex items-center gap-2  w-auto">
+                                
+                                {/*<Button className="m-2">Btn2</Button>*/}
                             </div>
                         </div>
 
@@ -639,21 +729,26 @@ export default function App() {
 
                         </SidebarInset>
                     <Sidebar>
-                        <main>
-                            <div className="flex flex-row md:flex-row">
-                                <SidebarTrigger className="flex items-end" />
-                                <Button disabled={isGuest ? true : false} onClick={() => CreateList() }>Create List</Button>
+                        <main className="flex flex-col h-screen">
+                            <div className="flex flex-row items-center justify-between p-3">
+                                <SidebarTrigger/>
+                                <Button disabled={isGuest ? true : false} onClick={() => CreateList() }>+ Νέα Λίστα</Button>
                             </div>
-                            <ul className="list-disc pl-5 space-y-2">
-                                {allLists?.map((list) => (
+                            {/*<ul className="list-disc pl-5 space-y-2">*/}
+                            <ul className="list-disc pl-5 space-y-2 flex-1 overflow-y-auto pr-2">
+                                {userLists?.map((list) => (
                                     <li key={list.id}>
                                         <div className="flex flex-row md:flex-row">
-                                        <CustomTrigger children={list.title} onClick={() => setListId(list.id)}></CustomTrigger>
+                                            <CustomTrigger children={list.title} onClick={() => { setListId(list.id); /*loadListRefetch();*/ }}></CustomTrigger>
                                             <Button onClick={() => {setListIdToDelete(list.id); setIsConfirmOpen(true); }}>X</Button>
                                         </div>
                                     </li>
+
                                 )) }
                             </ul>
+                            <div className="mt-auto p-4">
+                                {userData ? <Button onClick={() => Logout()}>{<LogoutIcon />}Αποσύνδεση</Button> : <h2 />}
+                            </div>
                             </main>
                         </Sidebar>
                     </SidebarProvider>

@@ -1,9 +1,11 @@
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Authentication.Google;
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.HttpOverrides;
 using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Options;
 using ShoppingList.Server.Data;
 using ShoppingList.Server.Hubs;
 using ShoppingList.Server.Services;
@@ -40,20 +42,38 @@ builder.Services.AddDbContext<ListDBContext>(opt => opt.UseNpgsql(builder.Config
 builder.Services.AddScoped<IShopListService, ShopListService>();
 builder.Services.AddScoped<IItemServices, ItemServices>();
 builder.Services.AddScoped<IUserServices, UserServices>();
+builder.Services.AddDataProtection().PersistKeysToDbContext<ListDBContext>();
 
 
 builder.Services.AddAuthentication(opt =>
 {
     opt.DefaultAuthenticateScheme = CookieAuthenticationDefaults.AuthenticationScheme;
-    opt.DefaultChallengeScheme = GoogleDefaults.AuthenticationScheme;
+    opt.DefaultChallengeScheme = CookieAuthenticationDefaults.AuthenticationScheme;
     opt.DefaultSignInScheme = CookieAuthenticationDefaults.AuthenticationScheme;
 })
     .AddCookie(opt =>
     {
-        opt.Cookie.Name = "ShoppingList_Auth";
+        opt.Cookie.Name = "__Host-ShoppingList_Auth";
+        opt.Cookie.Path = "/";
+        opt.ExpireTimeSpan = TimeSpan.FromDays(30);
+        opt.SlidingExpiration = true;
         opt.Cookie.HttpOnly = true;
         opt.Cookie.SameSite = SameSiteMode.None;
         opt.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+
+        //.Cookie.Path = "/; SameSite=None; Partitioned";
+
+        opt.Events.OnRedirectToLogin = context =>
+        {
+            if (context.Request.Path.StartsWithSegments("/api"))
+            {
+                context.Response.StatusCode = 401;
+            }else
+            {
+                context.Response.Redirect(context.RedirectUri);
+            }
+            return Task.CompletedTask;
+        };
     })
     .AddGoogle(opt =>
     {
@@ -62,6 +82,7 @@ builder.Services.AddAuthentication(opt =>
         opt.ClientSecret = googleAuth["ClientSecret"];
 
         opt.CallbackPath = "/api/signin-google";
+        opt.ClaimActions.MapJsonKey("picture", "picture");
     });
 builder.Services.AddAuthorization();
 
@@ -87,6 +108,7 @@ builder.Services.AddCors(opt => opt.AddPolicy("MyCorsPolicy", policy =>
     {
         policy.WithOrigins(origins).AllowAnyMethod().AllowAnyHeader().AllowCredentials();
     }
+    policy.SetPreflightMaxAge(TimeSpan.FromMinutes(10));
 }));
 
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -97,6 +119,17 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 builder.Services.AddSignalR();
+
+builder.Services.Configure<CookiePolicyOptions>(opt =>
+{
+    opt.OnAppendCookie = context =>
+    {
+        if (context.CookieName.StartsWith("__Host-ShoppingList_Auth"))
+        {
+            //context.CookieOptions.Extensions.Add("Partitioned");
+        }
+    };
+});
 
 var app = builder.Build();
 
@@ -131,6 +164,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 app.UseRouting();
 app.UseCors("MyCorsPolicy");
+app.UseCookiePolicy();
 
 app.UseAuthentication();
 app.UseAuthorization();

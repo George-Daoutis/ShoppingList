@@ -30,7 +30,16 @@ namespace ShoppingList.Server.Services
                     Id = u.Id,
                     Name = u.Name,
                     Email = u.Email,
-                    ShopListsGetDTO = u.ShopLists.Select(s => new ShopListGetDTO { Title = s.Title, ListedItems = s.ListedItems }).ToList()
+                    AllLists = u.ShopLists.Select(s => new ShopListGetDTO {Id = s.Id, Title = s.Title, ListedItems = s.ListedItems.Select(i => new ItemGetDTO
+                    {
+                        Id = i.Id,
+                        Name = i.Name,
+                        Quantity = i.Quantity,
+                        Price = i.Price,
+                        IsChecked = i.IsChecked,
+                        Position = i.Position
+                    }).OrderBy(i => i.Position).ToList() ?? new List<ItemGetDTO>()
+                    }).ToList()
                 }).FirstOrDefaultAsync();
                 if (user != null)
                 {

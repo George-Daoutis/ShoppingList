@@ -44,7 +44,7 @@ export default ({ mode }) => {
     }
 
     const viteEnv = loadEnv(mode, process.cwd(), '');
-    const API_URL = Object.prototype.hasOwnProperty.call(viteEnv, 'VITE_API_URL') ? viteEnv.VITE_API_URL : 'http://localhost:7262';
+    const API_URL = Object.prototype.hasOwnProperty.call(viteEnv, 'VITE_FRONTEND_URL') ? viteEnv.VITE_FRONTEND_URL : 'http://localhost:7262';
 
     return defineConfig({
         plugins: [plugin(), tailwindcss()],
@@ -55,19 +55,31 @@ export default ({ mode }) => {
         },
         server: {
             proxy: {
-                '/api': API_URL
+                '/api': {
+                    target: API_URL,
+                    changeOrigin: true,
+                    secure: false,
+                    configure: (proxy) => {
+                        proxy.on('proxyRes', (proxyRes) => {
+                            const sc = proxyRes.headers && proxyRes.headers['set-cookie'];
+                            if (sc && Array.isArray(sc)) {
+                                proxyRes.headers['set-cookie'] = sc.map(c => c.replace(/;\s*Domain=[^;]+/i, ''));
+                            }
+                        });
+                    }
+                }
+                /*server: {
+                    proxy: {
+                        '/api': {API_URL}
+                    },
+                    host: true, //CHANGE THIS FOR LOCAL HOST
+                    port: parseInt(env.DEV_SERVER_PORT || '64099'),
+                    https: {
+                        key: fs.readFileSync(keyFilePath),
+                        cert: fs.readFileSync(certFilePath),
+                    }*/
             }
         }
-        /*server: {
-            proxy: {
-                '/api': {API_URL}
-            },
-            host: true, //CHANGE THIS FOR LOCAL HOST
-            port: parseInt(env.DEV_SERVER_PORT || '64099'),
-            https: {
-                key: fs.readFileSync(keyFilePath),
-                cert: fs.readFileSync(certFilePath),
-            }*/
     }
     );
 };
